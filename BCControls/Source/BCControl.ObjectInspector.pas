@@ -21,6 +21,9 @@ type
     procedure DoClick(const HitInfo: THitInfo; const AIsDblClick: Boolean);
     procedure DoObjectChange;
     procedure SetInspectedObject(const AValue: TObject);
+  private
+    FUseVCLStyles: Boolean;
+    function GetVCLColor(Color: TColor): TColor;
   protected
     function DoCreateEditor(Node: PVirtualNode; Column: TColumnIndex): IVTEditLink; override;
     function DoInitChildren(Node: PVirtualNode; var ChildCount: Cardinal): Boolean; override;
@@ -40,6 +43,7 @@ type
     procedure AddUnlistedProperties(const AProperties: TBCArrayOfString);
     property InspectedObject: TObject read FInspectedObject write SetInspectedObject;
     property SkinManager: TsSkinManager read FSkinManager write FSkinManager;
+    property UseVCLStyles: Boolean read FUseVCLStyles write FUseVCLStyles;
   end;
 
   TBCObjectInspectorEditLink = class(TInterfacedObject, IVTEditLink)
@@ -217,6 +221,7 @@ var
 begin
   inherited Create(AOwner);
 
+  FUseVCLStyles := False;
   DragOperations := [];
   Header.AutoSizeIndex := 1;
   Header.Options := [hoAutoResize, hoColumnResize];
@@ -432,6 +437,9 @@ var
 begin
   inherited;
   LBackGroundColorIsLight := BackGroundColorIsLight;
+  if FUseVCLStyles then
+    LBackGroundColorIsLight := False;
+
   with PaintInfo do
   begin
     LData := GetNodeData(Node);
@@ -455,7 +463,7 @@ begin
         if Assigned(SkinManager) then
           Canvas.Font.Color := SkinManager.GetActiveEditFontColor
         else
-          Canvas.Font.Color := clWindowText;
+          Canvas.Font.Color := GetVCLColor(clWindowText);
       1:
         begin
           if LBackGroundColorIsLight then
@@ -464,7 +472,7 @@ begin
           if Assigned(SkinManager) then
             Canvas.Font.Color := SkinManager.GetActiveEditFontColor
           else
-            Canvas.Font.Color := clWindowText;
+            Canvas.Font.Color := GetVCLColor(clSkyBlue); // if Dark VCL Theme
 
           if Assigned(LParentPropertyObject) and Assigned(LData.PropertyInfo) and
             IsStoredProp(LParentPropertyObject, LData.PropertyInfo) then
@@ -481,7 +489,7 @@ begin
       if Assigned(SkinManager) and SkinManager.Active then
         Canvas.Font.Color := SkinManager.GetHighLightFontColor
       else
-        Canvas.Font.Color := clHighlightText;
+        Canvas.Font.Color := GetVCLColor(clHighlightText);
     end;
 
     SetBKMode(Canvas.Handle, TRANSPARENT);
@@ -835,6 +843,19 @@ function TBCObjectInspector.DoCreateEditor(Node: PVirtualNode; Column: TColumnIn
 begin
   //inherited;
   Result := TBCObjectInspectorEditLink.Create;
+end;
+
+function TBCObjectInspector.GetVCLColor(Color: TColor): TColor;
+var
+  LStyle: TCustomStyleServices;
+begin
+  Result := Color;
+  if FUseVCLStyles then
+  begin
+    LStyle := TStyleManager.ActiveStyle;
+    if not LStyle.IsSystemStyle then
+      Result := LStyle.GetSystemColor(Color);
+  end;
 end;
 
 { TSTVirtualGridEditLink }
